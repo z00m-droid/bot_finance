@@ -12,6 +12,12 @@ from telebot.apihelper import ApiTelegramException
 import config
 from handlers import register_handlers
 
+import os
+
+if "GOOGLE_CREDENTIALS" in os.environ:
+    with open("credentials.json", "w", encoding="utf-8") as f:
+        f.write(os.environ["GOOGLE_CREDENTIALS"])
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
