@@ -37,8 +37,8 @@ SHEET_OPERATIONS: str = "Операции"
 SHEET_ACCOUNTS: str = "Счета"
 
 # --- Диапазоны справочников на листе "Настройки" ---
-EXPENSE_CATEGORIES_RANGE: str = "B2:B14"
-INCOME_CATEGORIES_RANGE: str = "B16:B17"
+EXPENSE_CATEGORIES_RANGE: str = "B2:B28"
+INCOME_CATEGORIES_RANGE: str = "B30:B31"
 
 # --- Диапазон счетов на листе "Счета" (первый столбец, без заголовка) ---
 ACCOUNTS_COLUMN: str = "A"
