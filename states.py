@@ -13,6 +13,8 @@ from threading import Lock
 
 class UserState(Enum):
     MAIN_MENU = auto()
+
+    # Сценарий "Добавить операцию"
     WAITING_DATE_CHOICE = auto()
     WAITING_DATE_INPUT = auto()
     WAITING_TYPE = auto()
@@ -21,6 +23,15 @@ class UserState(Enum):
     WAITING_AMOUNT = auto()
     WAITING_COMMENT_CHOICE = auto()
     WAITING_COMMENT_INPUT = auto()
+
+    # Сценарий "Транзит" (перевод между своими счетами)
+    WAITING_TRANSIT_DATE_CHOICE = auto()
+    WAITING_TRANSIT_DATE_INPUT = auto()
+    WAITING_TRANSIT_FROM_ACCOUNT = auto()
+    WAITING_TRANSIT_TO_ACCOUNT = auto()
+    WAITING_TRANSIT_AMOUNT = auto()
+    WAITING_TRANSIT_COMMENT_CHOICE = auto()
+    WAITING_TRANSIT_COMMENT_INPUT = auto()
 
 
 @dataclass
@@ -34,9 +45,19 @@ class OperationDraft:
 
 
 @dataclass
+class TransitDraft:
+    date: datetime.date | None = None
+    from_account: str | None = None
+    to_account: str | None = None
+    amount: float | None = None
+    comment: str = ""
+
+
+@dataclass
 class UserSession:
     state: UserState = UserState.MAIN_MENU
     draft: OperationDraft = field(default_factory=OperationDraft)
+    transit_draft: TransitDraft = field(default_factory=TransitDraft)
     last_menu_message_id: int | None = None
     pending_options: list[str] = field(default_factory=list)
 
