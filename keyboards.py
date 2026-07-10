@@ -18,7 +18,8 @@ def main_reply_keyboard() -> types.ReplyKeyboardMarkup:
 def main_menu_inline_keyboard() -> types.InlineKeyboardMarkup:
     keyboard = types.InlineKeyboardMarkup()
     keyboard.add(
-        types.InlineKeyboardButton(Text.ADD_OPERATION_BUTTON, callback_data=Callback.ADD_OPERATION)
+        types.InlineKeyboardButton(Text.ADD_OPERATION_BUTTON, callback_data=Callback.ADD_OPERATION),
+        types.InlineKeyboardButton(Text.ADD_TRANSIT_BUTTON, callback_data=Callback.ADD_TRANSIT),
     )
     return keyboard
 
