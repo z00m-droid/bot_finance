@@ -31,22 +31,46 @@ SPREADSHEET_ID: str = _get_required_env("SPREADSHEET_ID")
 ALLOWED_USER_IDS: frozenset[int] = _parse_allowed_user_ids(_get_required_env("ALLOWED_USER_IDS"))
 GOOGLE_CREDENTIALS_PATH: str = os.getenv("GOOGLE_CREDENTIALS_PATH", "credentials.json")
 
+# Альтернатива GOOGLE_CREDENTIALS_PATH для платформ без файлового хранилища
+# (Railway, Render, Heroku и т.п.): содержимое credentials.json целиком в одной переменной.
+# Если задана — используется вместо файла по GOOGLE_CREDENTIALS_PATH.
+GOOGLE_CREDENTIALS_JSON: str | None = os.getenv("GOOGLE_CREDENTIALS_JSON")
+
 # --- Названия листов Google Sheets ---
 SHEET_SETTINGS: str = "Настройки"
 SHEET_OPERATIONS: str = "Операции"
 SHEET_ACCOUNTS: str = "Счета"
+SHEET_TRANSIT: str = "Транзит"
 
 # --- Диапазоны справочников на листе "Настройки" ---
-EXPENSE_CATEGORIES_RANGE: str = "B2:B28"
-INCOME_CATEGORIES_RANGE: str = "B30:B33"
+EXPENSE_CATEGORIES_RANGE: str = "B2:B29"
+INCOME_CATEGORIES_RANGE: str = "B31:B34"
 
 # --- Диапазон счетов на листе "Счета" (первый столбец, без заголовка) ---
 ACCOUNTS_COLUMN: str = "A"
 ACCOUNTS_RANGE: str = "A2:A1000"
 
+# --- Столбец "Текущий баланс" на листе "Счета" (формула, читаем после записи) ---
+ACCOUNTS_NAME_COLUMN_INDEX: int = 1  # A
+ACCOUNTS_BALANCE_COLUMN_INDEX: int = 5  # E
+
+# --- Настройки автоматической копилки (округления) на листе "Настройки" ---
+ROUNDUP_SETTINGS_RANGE: str = "H3:K1000"
+ROUNDUP_ENABLED_VALUE: str = "да"
+
 # --- Столбцы листа "Операции" в порядке записи ---
 OPERATIONS_COLUMNS_COUNT: int = 6  # Дата, Тип, Категория, Счёт, Сумма, Комментарий
 OPERATIONS_AMOUNT_COLUMN_INDEX: int = 5  # 1-based индекс столбца "Сумма" (E)
+OPERATIONS_TABLE_RANGE: str = "A1:F1"  # явный диапазон, чтобы append_row не искал таблицу по всему листу
+
+# --- Столбцы листа "Транзит" в порядке записи ---
+TRANSIT_COLUMNS_COUNT: int = 5  # Дата, Откуда, Куда, Сумма, Комментарий
+TRANSIT_AMOUNT_COLUMN_INDEX: int = 4  # 1-based индекс столбца "Сумма" (D)
+TRANSIT_TABLE_RANGE: str = "A1:E1"
+TRANSIT_AUTOROUND_COMMENT: str = "Автоокругление"
+
+# --- Небольшая пауза перед чтением баланса, чтобы формулы Google Sheets успели пересчитаться ---
+BALANCE_READ_DELAY_SECONDS: float = 1.0
 
 # --- Формат даты, который вводит пользователь ---
 DATE_INPUT_FORMAT: str = "%d.%m.%Y"
@@ -66,7 +90,9 @@ OPERATION_TYPE_EXPENSE: str = "Расход"
 class Text:
     ACCESS_DENIED = "У вас нет доступа к этому боту."
     MENU_BUTTON = "Меню"
+    MAIN_MENU_PROMPT = "Главное меню:"
     ADD_OPERATION_BUTTON = "➕ Добавить операцию"
+    ADD_TRANSIT_BUTTON = "🔁 Транзит"
     CANCEL_BUTTON = "❌ Отмена"
 
     DATE_TODAY_BUTTON = "Сегодня"
@@ -85,6 +111,9 @@ class Text:
     ASK_ACCOUNT = "Выберите счёт:"
     NO_ACCOUNTS = "Список счетов пуст. Обратитесь к администратору таблицы."
 
+    ASK_TRANSIT_FROM_ACCOUNT = "Выберите счёт списания:"
+    ASK_TRANSIT_TO_ACCOUNT = "Выберите счёт зачисления:"
+
     ASK_AMOUNT = "Введите сумму операции:"
     INVALID_AMOUNT = "Некорректная сумма. Введите число, например 100 или 100.50:"
 
@@ -100,10 +129,25 @@ class Text:
         "Категория: {category}\n"
         "Счёт: {account}\n"
         "Сумма: {amount}\n"
-        "Комментарий: {comment}"
+        "Комментарий: {comment}\n\n"
+        "Баланс «{account}»: {balance}"
     )
 
+    TRANSIT_SAVED = (
+        "✅ Перевод успешно добавлен.\n\n"
+        "Дата: {date}\n"
+        "Откуда: {from_account}\n"
+        "Куда: {to_account}\n"
+        "Сумма: {amount}\n"
+        "Комментарий: {comment}\n\n"
+        "Баланс «{from_account}»: {from_balance}\n"
+        "Баланс «{to_account}»: {to_balance}"
+    )
+
+    AUTOROUND_NOTICE = "\n♻️ Автоокругление: {amount} переведено на «{target_account}»."
+
     OPERATION_CANCELLED = "Операция отменена."
+    NO_OTHER_ACCOUNTS_FOR_TRANSIT = "Нет других счетов для перевода. Добавьте ещё один счёт в таблицу."
     SESSION_EXPIRED = "Сессия устарела. Начните заново, нажав «Меню»."
     UNEXPECTED_ERROR = "Произошла ошибка. Попробуйте начать заново, нажав «Меню»."
     SHEETS_ERROR = "Не удалось связаться с Google Sheets. Попробуйте позже."
@@ -113,6 +157,7 @@ class Text:
 # --- Префиксы callback_data (чтобы не хардкодить строки в handlers.py) ---
 class Callback:
     ADD_OPERATION = "add_operation"
+    ADD_TRANSIT = "add_transit"
     CANCEL = "cancel"
 
     DATE_TODAY = "date_today"
@@ -123,6 +168,9 @@ class Callback:
 
     CATEGORY_PREFIX = "category:"
     ACCOUNT_PREFIX = "account:"
+
+    TRANSIT_FROM_PREFIX = "tfrom:"
+    TRANSIT_TO_PREFIX = "tto:"
 
     COMMENT_YES = "comment_yes"
     COMMENT_NO = "comment_no"
